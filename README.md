@@ -43,6 +43,18 @@ Force-Simulation-Parameter in `createGraph()`:
 - Vanilla JavaScript
 - Keine Server-Kommunikation
 
+## Changelog
+
+**2024-11-28 - v1.1**
+- Verbesserte Label-Lesbarkeit mit Text-Halo-Effekt
+- Fixierte Node-Positionen: Gezogene Knoten bleiben an Ort und Stelle
+- Farbcodierung nach Häufigkeit mit Legende (Grün = häufig, Magenta = selten)
+- RESET_POSITIONS Button zum Zurücksetzen der manuellen Anordnung
+- Node-Filter nach Verbindungsanzahl (min/max connections)
+- Filtert ungültige Hashtags (reine Zahlen, zu kurze Tags)
+- Breiteres Layout (1600px) für bessere Übersicht
+- Kompaktere Controls ohne Zeilenumbruch
+
 ## Lizenz
 
 GPL-3.0

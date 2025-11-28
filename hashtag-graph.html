@@ -21,7 +21,7 @@
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             background: #1a1a1a;
             border-radius: 0;
@@ -116,10 +116,10 @@
         }
         
         .controls {
-            padding: 20px 30px;
+            padding: 15px 30px;
             background: #151515;
             display: flex;
-            gap: 20px;
+            gap: 15px;
             flex-wrap: wrap;
             align-items: center;
             border-bottom: 1px solid #333;
@@ -128,7 +128,7 @@
         .control-group {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
         
         .control-group::before {
@@ -149,7 +149,7 @@
         }
         
         input[type="number"] {
-            width: 80px;
+            width: 90px;
             padding: 5px 10px;
             border: 1px solid #00ff88;
             border-radius: 0;
@@ -164,7 +164,7 @@
         }
         
         button {
-            padding: 8px 16px;
+            padding: 8px 14px;
             background: transparent;
             color: #00ff88;
             border: 1px solid #00ff88;
@@ -174,7 +174,8 @@
             font-family: 'Courier New', monospace;
             letter-spacing: 1px;
             transition: all 0.2s ease;
-            font-size: 0.85em;
+            font-size: 0.8em;
+            white-space: nowrap;
         }
         
         button::before {
@@ -284,6 +285,44 @@
             gap: 15px;
         }
         
+        .legend {
+            padding: 20px 30px;
+            background: #151515;
+            border-top: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-title {
+            color: #00ff88;
+            font-size: 0.85em;
+            letter-spacing: 2px;
+            margin-right: 10px;
+        }
+        
+        .legend-title::before {
+            content: '// ';
+            color: #ff0066;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+            color: #00ff88;
+            opacity: 0.8;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid #00ff88;
+        }
+        
         .stat-box {
             background: #1a1a1a;
             padding: 15px;
@@ -335,17 +374,22 @@
         
         .link {
             stroke: #00ff88;
-            stroke-opacity: 0.2;
+            stroke-opacity: 0.15;
         }
         
         .node-label {
-            font-size: 10px;
+            font-size: 12px;
             pointer-events: none;
             text-anchor: middle;
-            font-weight: 400;
+            font-weight: 700;
             font-family: 'Courier New', monospace;
             fill: #00ff88;
-            opacity: 0.8;
+            opacity: 1;
+            paint-order: stroke;
+            stroke: #0d0d0d;
+            stroke-width: 4px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
         
         .tooltip {
@@ -399,14 +443,19 @@
         <div class="controls" id="controls" style="display: none;">
             <div class="control-group">
                 <label>min.connections:</label>
-                <input type="number" id="minConnections" value="2" min="1" max="10">
+                <input type="number" id="minConnections" value="2" min="1" max="1000">
+            </div>
+            <div class="control-group">
+                <label>max.connections:</label>
+                <input type="number" id="maxConnections" value="5000" min="10" max="10000">
             </div>
             <div class="control-group">
                 <label>top.nodes:</label>
-                <input type="number" id="topHashtags" value="50" min="10" max="200">
+                <input type="number" id="topHashtags" value="50" min="10" max="500">
             </div>
             <button onclick="updateGraph()">UPDATE</button>
             <button onclick="resetZoom()">RESET_ZOOM</button>
+            <button onclick="resetPositions()">RESET_POSITIONS</button>
         </div>
         
         <div id="loading" class="loading" style="display: none;">
@@ -420,6 +469,22 @@
                 <div class="sidebar-content">
                     <div class="sidebar-empty">// click node to analyze</div>
                 </div>
+            </div>
+        </div>
+        
+        <div class="legend" id="legend">
+            <span class="legend-title">COLOR_SCALE</span>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #00ff88;"></div>
+                <span>häufig verwendet</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(to right, #00ff88, #88ff88);"></div>
+                <span>mittel</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff0066;"></div>
+                <span>selten verwendet</span>
             </div>
         </div>
         
@@ -536,6 +601,7 @@
             }
             
             document.getElementById('controls').style.display = 'flex';
+            document.getElementById('legend').style.display = 'flex';
             document.getElementById('stats').style.display = 'grid';
             document.getElementById('loading').style.display = 'none';
             updateGraph();
@@ -557,6 +623,15 @@
                     console.log('> Sample post:', JSON.stringify(post).substring(0, 500));
                 }
                 
+                // Debug: Zeige einige Beispiele
+                if (idx < 3) {
+                    console.log(`> Post ${idx} analysis:`, {
+                        hasObject: !!post.object,
+                        hasContent: !!(post.content || (post.object && post.object.content)),
+                        hasTags: !!(post.object && post.object.tag)
+                    });
+                }
+                
                 // Versuche verschiedene Strukturen
                 if (post.object) {
                     // ActivityPub Format
@@ -565,7 +640,7 @@
                         hashtags = post.object.tag
                             .filter(t => t.type === 'Hashtag')
                             .map(t => (t.name || '').replace('#', '').toLowerCase())
-                            .filter(t => t.length > 0);
+                            .filter(t => t.length >= 2 && !/^\d+$/.test(t)); // Filtere Zahlen und zu kurze Tags
                     }
                 } else if (post.content) {
                     content = post.content;
@@ -574,6 +649,11 @@
                 // Falls keine Tags gefunden, extrahiere aus Content
                 if (hashtags.length === 0 && content) {
                     hashtags = extractHashtags(content);
+                }
+                
+                // Debug: Zeige verdächtige Hashtags
+                if (hashtags.some(h => /^\d+$/.test(h) || h.length < 2)) {
+                    console.log('> Suspicious hashtags filtered:', hashtags.filter(h => /^\d+$/.test(h) || h.length < 2));
                 }
                 
                 // Ignoriere Posts ohne Hashtags
@@ -622,11 +702,17 @@
         
         function extractHashtags(text) {
             const matches = text.match(/#[\w\u00C0-\u017F]+/gi);
-            return matches ? matches.map(h => h.replace('#', '').toLowerCase()) : [];
+            return matches ? matches
+                .map(h => h.replace('#', '').toLowerCase())
+                .filter(h => {
+                    // Filtere ungültige Tags: reine Zahlen, zu kurz, etc.
+                    return h.length >= 2 && !/^\d+$/.test(h);
+                }) : [];
         }
         
         function updateGraph() {
             const minConnections = parseInt(document.getElementById('minConnections').value);
+            const maxConnections = parseInt(document.getElementById('maxConnections').value);
             const topN = parseInt(document.getElementById('topHashtags').value);
             
             // Sortiere nach Häufigkeit und nimm Top N
@@ -634,18 +720,48 @@
                 .sort((a, b) => b[1].count - a[1].count)
                 .slice(0, topN);
             
-            const nodes = sortedHashtags.map(([tag, data]) => ({
-                id: tag,
-                count: data.count,
-                connections: data.connections
-            }));
+            // Berechne für jeden Hashtag die Gesamtzahl seiner Verbindungen
+            const nodesWithStats = sortedHashtags.map(([tag, data], index) => {
+                const totalConnections = Object.keys(data.connections).length;
+                return {
+                    id: tag,
+                    count: data.count,
+                    connections: data.connections,
+                    totalConnections: totalConnections,
+                    rank: index
+                };
+            });
+            
+            console.log('> Before filter - Total nodes:', nodesWithStats.length);
+            if (nodesWithStats.length > 0) {
+                console.log('> Connection range:', 
+                    Math.min(...nodesWithStats.map(n => n.totalConnections)),
+                    'to',
+                    Math.max(...nodesWithStats.map(n => n.totalConnections))
+                );
+            }
+            console.log('> Filter: nodes with', minConnections, 'to', maxConnections, 'connections');
+            
+            // Filtere Nodes nach ihrer Gesamtzahl an Verbindungen
+            const nodes = nodesWithStats.filter(node => 
+                node.totalConnections >= minConnections && 
+                node.totalConnections <= maxConnections
+            );
+            
+            console.log('> After filter:', nodes.length, 'nodes');
+            if (nodes.length > 0) {
+                console.log('> Sample nodes:', nodes.slice(0, 5).map(n => `#${n.id}(${n.totalConnections} conn)`));
+            } else {
+                console.log('> ⚠️ No nodes left! Adjust min/max connections.');
+            }
             
             const links = [];
             const nodeIds = new Set(nodes.map(n => n.id));
             
+            // Erstelle Links zwischen den gefilterten Nodes
             nodes.forEach(node => {
                 Object.entries(node.connections).forEach(([target, weight]) => {
-                    if (nodeIds.has(target) && weight >= minConnections && node.id < target) {
+                    if (nodeIds.has(target) && node.id < target) {
                         links.push({
                             source: node.id,
                             target: target,
@@ -654,6 +770,8 @@
                     }
                 });
             });
+            
+            console.log('> Links created:', links.length);
             
             document.getElementById('totalConnections').textContent = links.length;
             
@@ -686,9 +804,9 @@
             
             svg.call(zoom);
             
-            // Color scale - CCC style mit cyan/magenta accents
+            // Color scale - basiert auf Häufigkeit (Rang)
             const colorScale = d3.scaleLinear()
-                .domain([0, nodes.length])
+                .domain([0, nodes.length - 1])
                 .range(['#00ff88', '#ff0066']);
             
             // Simulation mit mehr Abstand
@@ -715,7 +833,7 @@
                 .append('circle')
                 .attr('class', 'node')
                 .attr('r', d => Math.sqrt(d.count) * 3 + 5)
-                .attr('fill', (d, i) => colorScale(i))
+                .attr('fill', d => colorScale(d.rank))
                 .attr('fill-opacity', 0.8)
                 .call(d3.drag()
                     .on('start', dragstarted)
@@ -725,7 +843,7 @@
             // Store node elements globally
             window.graphNodeElements = node;
             
-            // Labels - größer und besser lesbar
+            // Labels - größer und besser lesbar mit Halo
             const label = g.append('g')
                 .selectAll('text')
                 .data(nodes)
@@ -733,9 +851,7 @@
                 .append('text')
                 .attr('class', 'node-label')
                 .text(d => '#' + d.id)
-                .attr('dy', d => Math.sqrt(d.count) * 3 + 25)
-                .style('font-size', '12px')
-                .style('opacity', 0.9);
+                .attr('dy', d => Math.sqrt(d.count) * 3 + 25);
             
             // Click handler für Sidebar
             let selectedNode = null;
@@ -907,8 +1023,7 @@
         
         function dragended(event, d) {
             if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
+            // Knoten bleibt fixiert (fx/fy werden NICHT auf null gesetzt)
         }
         
         function resetZoom() {
@@ -916,6 +1031,20 @@
                 d3.zoom().transform,
                 d3.zoomIdentity
             );
+        }
+        
+        function resetPositions() {
+            // Entferne alle fixierten Positionen
+            if (window.graphNodes) {
+                window.graphNodes.forEach(node => {
+                    node.fx = null;
+                    node.fy = null;
+                });
+                // Starte Simulation neu
+                if (simulation) {
+                    simulation.alpha(1).restart();
+                }
+            }
         }
     </script>
 </body>
