@@ -1,0 +1,19 @@
+# Mastodon Archive Dateien
+*.json
+outbox.json
+posts.json
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup-Dateien
+*.bak
+*.tmp 

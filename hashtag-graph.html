@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mastodon Hashtag Netzwerk</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0d0d0d;
+            min-height: 100vh;
+            padding: 20px;
+            color: #00ff88;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            border-radius: 0;
+            border: 1px solid #00ff88;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.15);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #151515;
+            color: #00ff88;
+            padding: 30px;
+            text-align: left;
+            border-bottom: 1px solid #00ff88;
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+            font-weight: 400;
+            letter-spacing: 3px;
+            text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+        }
+        
+        .header h1::before {
+            content: '> ';
+            color: #ff0066;
+        }
+        
+        .header p {
+            font-size: 0.9em;
+            opacity: 0.7;
+            letter-spacing: 1px;
+            padding-left: 20px;
+        }
+        
+        .upload-section {
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .upload-box {
+            border: 1px solid #00ff88;
+            border-radius: 0;
+            padding: 40px;
+            background: #151515;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .upload-box::before {
+            content: '[UPLOAD]';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 0.7em;
+            color: #ff0066;
+            letter-spacing: 2px;
+        }
+        
+        .upload-box:hover {
+            background: #1f1f1f;
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.2);
+            border-color: #ff0066;
+        }
+        
+        .upload-box.dragover {
+            background: #1f1f1f;
+            border-color: #ff0066;
+            box-shadow: 0 0 40px rgba(255, 0, 102, 0.3);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .upload-label {
+            font-size: 1em;
+            color: #00ff88;
+            font-weight: 400;
+            display: block;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        
+        .upload-hint {
+            color: #00ff88;
+            opacity: 0.5;
+            font-size: 0.85em;
+        }
+        
+        .controls {
+            padding: 20px 30px;
+            background: #151515;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-group::before {
+            content: '//';
+            color: #ff0066;
+            margin-right: 5px;
+        }
+        
+        label {
+            font-weight: 400;
+            color: #00ff88;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+        }
+        
+        input[type="number"] {
+            width: 80px;
+            padding: 5px 10px;
+            border: 1px solid #00ff88;
+            border-radius: 0;
+            background: #0d0d0d;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #ff0066;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background: transparent;
+            color: #00ff88;
+            border: 1px solid #00ff88;
+            border-radius: 0;
+            cursor: pointer;
+            font-weight: 400;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+            font-size: 0.85em;
+        }
+        
+        button::before {
+            content: '[';
+            color: #ff0066;
+        }
+        
+        button::after {
+            content: ']';
+            color: #ff0066;
+        }
+        
+        button:hover {
+            background: #00ff88;
+            color: #0d0d0d;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        #graph {
+            width: calc(100% - 350px);
+            height: 700px;
+            position: relative;
+            background: #0d0d0d;
+            float: left;
+        }
+        
+        .sidebar {
+            width: 350px;
+            height: 700px;
+            background: #151515;
+            border-left: 1px solid #333;
+            float: right;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .sidebar h3 {
+            color: #00ff88;
+            font-size: 0.9em;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .sidebar h3::before {
+            content: '> ';
+            color: #ff0066;
+        }
+        
+        .sidebar-content {
+            color: #00ff88;
+            font-size: 0.85em;
+            line-height: 1.6;
+        }
+        
+        .sidebar-empty {
+            color: #00ff88;
+            opacity: 0.4;
+            font-size: 0.85em;
+            font-style: italic;
+        }
+        
+        .connection-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .connection-item:hover {
+            background: #1a1a1a;
+            padding-left: 5px;
+        }
+        
+        .connection-item:last-child {
+            border-bottom: none;
+        }
+        
+        .connection-tag {
+            color: #ff0066;
+            font-weight: bold;
+        }
+        
+        .connection-tag:hover {
+            text-shadow: 0 0 8px #ff0066;
+        }
+        
+        .connection-count {
+            color: #00ff88;
+            opacity: 0.7;
+            float: right;
+        }
+        
+        .graph-container {
+            overflow: hidden;
+        }
+        
+        .stats {
+            padding: 20px 30px;
+            background: #151515;
+            border-top: 1px solid #333;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-box {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 0;
+            border: 1px solid #333;
+            box-shadow: none;
+            position: relative;
+        }
+        
+        .stat-box::before {
+            content: '▸';
+            position: absolute;
+            top: 12px;
+            left: 10px;
+            color: #ff0066;
+            font-size: 0.8em;
+        }
+        
+        .stat-label {
+            font-size: 0.75em;
+            color: #00ff88;
+            opacity: 0.6;
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding-left: 15px;
+        }
+        
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 400;
+            color: #00ff88;
+            text-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+            padding-left: 15px;
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            stroke: #00ff88;
+            stroke-width: 1px;
+        }
+        
+        .node:hover {
+            stroke: #ff0066;
+            stroke-width: 2px;
+            filter: drop-shadow(0 0 8px #ff0066);
+        }
+        
+        .link {
+            stroke: #00ff88;
+            stroke-opacity: 0.2;
+        }
+        
+        .node-label {
+            font-size: 10px;
+            pointer-events: none;
+            text-anchor: middle;
+            font-weight: 400;
+            font-family: 'Courier New', monospace;
+            fill: #00ff88;
+            opacity: 0.8;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: #0d0d0d;
+            color: #00ff88;
+            padding: 12px 16px;
+            border-radius: 0;
+            border: 1px solid #00ff88;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.3);
+            max-width: 300px;
+        }
+        
+        .tooltip strong {
+            color: #ff0066;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1em;
+            color: #00ff88;
+            letter-spacing: 3px;
+        }
+        
+        .loading::before {
+            content: '> ';
+            color: #ff0066;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>HASHTAG_NETWORK.GRAPH</h1>
+            <p>// mastodon knowledge graph analyzer v1.0</p>
+        </div>
+        
+        <div class="upload-section">
+            <div class="upload-box" id="uploadBox">
+                <input type="file" id="fileInput" accept=".json,.txt" multiple>
+                <label for="fileInput" class="upload-label">$ LOAD ARCHIVE_DATA</label>
+                <p class="upload-hint">drag.drop | click.select → [.json | .txt]</p>
+            </div>
+        </div>
+        
+        <div class="controls" id="controls" style="display: none;">
+            <div class="control-group">
+                <label>min.connections:</label>
+                <input type="number" id="minConnections" value="2" min="1" max="10">
+            </div>
+            <div class="control-group">
+                <label>top.nodes:</label>
+                <input type="number" id="topHashtags" value="50" min="10" max="200">
+            </div>
+            <button onclick="updateGraph()">UPDATE</button>
+            <button onclick="resetZoom()">RESET_ZOOM</button>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            ANALYZING_DATA...
+        </div>
+        
+        <div class="graph-container">
+            <div id="graph"></div>
+            <div class="sidebar" id="sidebar">
+                <h3>NODE_INFO</h3>
+                <div class="sidebar-content">
+                    <div class="sidebar-empty">// click node to analyze</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-box">
+                <div class="stat-label">total.posts</div>
+                <div class="stat-value" id="totalPosts">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">unique.tags</div>
+                <div class="stat-value" id="uniqueHashtags">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">connections</div>
+                <div class="stat-value" id="totalConnections">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">clusters</div>
+                <div class="stat-value" id="clusterCount">0</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allPosts = [];
+        let hashtagData = {};
+        let svg, g, simulation;
+        
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('fileInput');
+        
+        // Drag & Drop
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+        
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+        
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+        
+        uploadBox.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        async function handleFiles(files) {
+            document.getElementById('loading').style.display = 'block';
+            allPosts = [];
+            
+            console.log('> Loading', files.length, 'files...');
+            
+            for (let file of files) {
+                console.log('> Processing:', file.name);
+                const text = await file.text();
+                try {
+                    // Versuche JSON zu parsen
+                    const data = JSON.parse(text);
+                    
+                    // Verschiedene JSON-Strukturen unterstützen
+                    if (Array.isArray(data)) {
+                        console.log('  -> Found array with', data.length, 'items');
+                        allPosts = allPosts.concat(data);
+                    } else if (data.orderedItems && Array.isArray(data.orderedItems)) {
+                        console.log('  -> Found orderedItems with', data.orderedItems.length, 'items');
+                        allPosts = allPosts.concat(data.orderedItems);
+                    } else if (data.items && Array.isArray(data.items)) {
+                        console.log('  -> Found items with', data.items.length, 'items');
+                        allPosts = allPosts.concat(data.items);
+                    } else {
+                        console.log('  -> Single object, adding as post');
+                        allPosts.push(data);
+                    }
+                } catch (e) {
+                    console.log('  -> Not JSON, trying text extraction');
+                    // Falls kein JSON, extrahiere Hashtags aus Text
+                    const hashtags = text.match(/#[\w\u00C0-\u017F]+/gi);
+                    if (hashtags) {
+                        const lines = text.split('\n');
+                        lines.forEach(line => {
+                            const tags = line.match(/#[\w\u00C0-\u017F]+/gi);
+                            if (tags) {
+                                allPosts.push({ content: line, hashtags: tags });
+                            }
+                        });
+                    }
+                }
+            }
+            
+            console.log('> Total posts loaded:', allPosts.length);
+            
+            if (allPosts.length === 0) {
+                alert('Keine Posts gefunden! Bitte überprüfe das Dateiformat.');
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            
+            analyzeHashtags();
+            
+            if (Object.keys(hashtagData).length === 0) {
+                alert('Keine Hashtags gefunden! Die JSON-Struktur wird möglicherweise nicht erkannt. Öffne die Browser-Konsole (F12) für Details.');
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('controls').style.display = 'flex';
+            document.getElementById('stats').style.display = 'grid';
+            document.getElementById('loading').style.display = 'none';
+            updateGraph();
+        }
+        
+        function analyzeHashtags() {
+            hashtagData = {};
+            let processedPosts = 0;
+            
+            console.log('> Analyzing', allPosts.length, 'posts...');
+            
+            allPosts.forEach((post, idx) => {
+                let hashtags = [];
+                let content = '';
+                
+                // Debug: Zeige Struktur des ersten Posts
+                if (idx === 0) {
+                    console.log('> First post structure:', Object.keys(post));
+                    console.log('> Sample post:', JSON.stringify(post).substring(0, 500));
+                }
+                
+                // Versuche verschiedene Strukturen
+                if (post.object) {
+                    // ActivityPub Format
+                    if (post.object.content) content = post.object.content;
+                    if (post.object.tag && Array.isArray(post.object.tag)) {
+                        hashtags = post.object.tag
+                            .filter(t => t.type === 'Hashtag')
+                            .map(t => (t.name || '').replace('#', '').toLowerCase())
+                            .filter(t => t.length > 0);
+                    }
+                } else if (post.content) {
+                    content = post.content;
+                }
+                
+                // Falls keine Tags gefunden, extrahiere aus Content
+                if (hashtags.length === 0 && content) {
+                    hashtags = extractHashtags(content);
+                }
+                
+                // Ignoriere Posts ohne Hashtags
+                if (hashtags.length === 0) return;
+                
+                processedPosts++;
+                
+                // Zähle Hashtag-Vorkommen
+                hashtags.forEach(tag => {
+                    if (!hashtagData[tag]) {
+                        hashtagData[tag] = { count: 0, connections: {} };
+                    }
+                    hashtagData[tag].count++;
+                });
+                
+                // Zähle Co-Occurrence
+                for (let i = 0; i < hashtags.length; i++) {
+                    for (let j = i + 1; j < hashtags.length; j++) {
+                        const tag1 = hashtags[i];
+                        const tag2 = hashtags[j];
+                        
+                        if (!hashtagData[tag1].connections[tag2]) {
+                            hashtagData[tag1].connections[tag2] = 0;
+                        }
+                        if (!hashtagData[tag2].connections[tag1]) {
+                            hashtagData[tag2].connections[tag1] = 0;
+                        }
+                        
+                        hashtagData[tag1].connections[tag2]++;
+                        hashtagData[tag2].connections[tag1]++;
+                    }
+                }
+            });
+            
+            console.log('> Processed', processedPosts, 'posts with hashtags');
+            console.log('> Found', Object.keys(hashtagData).length, 'unique hashtags');
+            console.log('> Top 10 hashtags:', Object.entries(hashtagData)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, 10)
+                .map(([tag, data]) => `#${tag}(${data.count})`));
+            
+            // Update Stats
+            document.getElementById('totalPosts').textContent = processedPosts;
+            document.getElementById('uniqueHashtags').textContent = Object.keys(hashtagData).length;
+        }
+        
+        function extractHashtags(text) {
+            const matches = text.match(/#[\w\u00C0-\u017F]+/gi);
+            return matches ? matches.map(h => h.replace('#', '').toLowerCase()) : [];
+        }
+        
+        function updateGraph() {
+            const minConnections = parseInt(document.getElementById('minConnections').value);
+            const topN = parseInt(document.getElementById('topHashtags').value);
+            
+            // Sortiere nach Häufigkeit und nimm Top N
+            const sortedHashtags = Object.entries(hashtagData)
+                .sort((a, b) => b[1].count - a[1].count)
+                .slice(0, topN);
+            
+            const nodes = sortedHashtags.map(([tag, data]) => ({
+                id: tag,
+                count: data.count,
+                connections: data.connections
+            }));
+            
+            const links = [];
+            const nodeIds = new Set(nodes.map(n => n.id));
+            
+            nodes.forEach(node => {
+                Object.entries(node.connections).forEach(([target, weight]) => {
+                    if (nodeIds.has(target) && weight >= minConnections && node.id < target) {
+                        links.push({
+                            source: node.id,
+                            target: target,
+                            weight: weight
+                        });
+                    }
+                });
+            });
+            
+            document.getElementById('totalConnections').textContent = links.length;
+            
+            createGraph(nodes, links);
+        }
+        
+        function createGraph(nodes, links) {
+            d3.select('#graph').selectAll('*').remove();
+            
+            const width = document.getElementById('graph').clientWidth;
+            const height = 700;
+            
+            // Store nodes globally for sidebar access
+            window.graphNodes = nodes;
+            window.graphNodeElements = null;
+            
+            svg = d3.select('#graph')
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+            
+            g = svg.append('g');
+            
+            // Zoom
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+            
+            svg.call(zoom);
+            
+            // Color scale - CCC style mit cyan/magenta accents
+            const colorScale = d3.scaleLinear()
+                .domain([0, nodes.length])
+                .range(['#00ff88', '#ff0066']);
+            
+            // Simulation mit mehr Abstand
+            simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(d => 150 / Math.sqrt(d.weight)))
+                .force('charge', d3.forceManyBody().strength(-800))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => Math.sqrt(d.count) * 4 + 25));
+            
+            // Links
+            const link = g.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('class', 'link')
+                .attr('stroke-width', d => Math.sqrt(d.weight));
+            
+            // Nodes
+            const node = g.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .enter()
+                .append('circle')
+                .attr('class', 'node')
+                .attr('r', d => Math.sqrt(d.count) * 3 + 5)
+                .attr('fill', (d, i) => colorScale(i))
+                .attr('fill-opacity', 0.8)
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+            
+            // Store node elements globally
+            window.graphNodeElements = node;
+            
+            // Labels - größer und besser lesbar
+            const label = g.append('g')
+                .selectAll('text')
+                .data(nodes)
+                .enter()
+                .append('text')
+                .attr('class', 'node-label')
+                .text(d => '#' + d.id)
+                .attr('dy', d => Math.sqrt(d.count) * 3 + 25)
+                .style('font-size', '12px')
+                .style('opacity', 0.9);
+            
+            // Click handler für Sidebar
+            let selectedNode = null;
+            
+            node.on('click', (event, d) => {
+                event.stopPropagation();
+                selectNode(d, node);
+            });
+            
+            // Click auf leeren Bereich deselektiert
+            svg.on('click', () => {
+                deselectNode(node);
+            });
+            
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y);
+                
+                label
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            });
+            
+            // Cluster detection (einfache Methode)
+            const clusters = detectClusters(nodes, links);
+            document.getElementById('clusterCount').textContent = clusters;
+        }
+        
+        function detectClusters(nodes, links) {
+            const visited = new Set();
+            let clusters = 0;
+            
+            function dfs(nodeId) {
+                if (visited.has(nodeId)) return;
+                visited.add(nodeId);
+                
+                links.forEach(link => {
+                    if (link.source.id === nodeId || link.source === nodeId) {
+                        dfs(link.target.id || link.target);
+                    }
+                    if (link.target.id === nodeId || link.target === nodeId) {
+                        dfs(link.source.id || link.source);
+                    }
+                });
+            }
+            
+            nodes.forEach(node => {
+                if (!visited.has(node.id)) {
+                    dfs(node.id);
+                    clusters++;
+                }
+            });
+            
+            return clusters;
+        }
+        
+        function updateSidebar(nodeData) {
+            const connections = Object.entries(nodeData.connections)
+                .sort((a, b) => b[1] - a[1]);
+            
+            let html = `
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 1.2em; color: #ff0066; margin-bottom: 10px;">
+                        #${nodeData.id}
+                    </div>
+                    <div style="opacity: 0.7; margin-bottom: 5px;">
+                        used: ${nodeData.count}x
+                    </div>
+                    <div style="opacity: 0.7;">
+                        connections: ${connections.length}
+                    </div>
+                </div>
+            `;
+            
+            if (connections.length > 0) {
+                html += '<div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #333;">';
+                html += '<div style="margin-bottom: 10px; opacity: 0.6; font-size: 0.85em;">// connected tags (click to navigate)</div>';
+                
+                connections.forEach(([tag, count]) => {
+                    html += `
+                        <div class="connection-item" data-tag="${tag}">
+                            <span class="connection-tag">#${tag}</span>
+                            <span class="connection-count">${count}x</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            }
+            
+            document.querySelector('.sidebar-content').innerHTML = html;
+            
+            // Add event listeners to connection items
+            document.querySelectorAll('.connection-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const tag = this.getAttribute('data-tag');
+                    selectNodeByTag(tag);
+                });
+            });
+        }
+        
+        function selectNodeByTag(tagName) {
+            // Finde den Node mit diesem Tag
+            const nodeData = window.graphNodes.find(n => n.id === tagName);
+            if (nodeData && window.graphNodeElements) {
+                selectNode(nodeData, window.graphNodeElements);
+                
+                // Zentriere den Node im Viewport (optional, für bessere UX)
+                const nodeElement = window.graphNodeElements.filter(d => d.id === tagName);
+                if (!nodeElement.empty()) {
+                    const nodePos = nodeElement.datum();
+                    const graphWidth = document.getElementById('graph').clientWidth;
+                    const graphHeight = 700;
+                    
+                    // Sanfte Transition zum Node
+                    const currentTransform = d3.zoomTransform(svg.node());
+                    const scale = currentTransform.k;
+                    const x = graphWidth / 2 - nodePos.x * scale;
+                    const y = graphHeight / 2 - nodePos.y * scale;
+                    
+                    svg.transition()
+                        .duration(500)
+                        .call(
+                            d3.zoom().transform,
+                            d3.zoomIdentity.translate(x, y).scale(scale)
+                        );
+                }
+            }
+        }
+        
+        function selectNode(nodeData, nodeElements) {
+            window.selectedNode = nodeData;
+            updateSidebar(nodeData);
+            
+            // Highlight selected node
+            if (nodeElements) {
+                nodeElements.attr('stroke-width', n => n === nodeData ? 3 : 1)
+                    .attr('stroke', n => n === nodeData ? '#ff0066' : '#00ff88');
+            }
+        }
+        
+        function deselectNode(nodeElements) {
+            window.selectedNode = null;
+            if (nodeElements) {
+                nodeElements.attr('stroke-width', 1)
+                    .attr('stroke', '#00ff88');
+            }
+            document.querySelector('.sidebar-content').innerHTML = 
+                '<div class="sidebar-empty">// click node to analyze</div>';
+        }
+        
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+        
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+        
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+        
+        function resetZoom() {
+            svg.transition().duration(750).call(
+                d3.zoom().transform,
+                d3.zoomIdentity
+            );
+        }
+    </script>
+</body>
+</html>
