@@ -55,6 +55,12 @@ Force-Simulation-Parameter in `createGraph()`:
 - Breiteres Layout (1600px) für bessere Übersicht
 - Kompaktere Controls ohne Zeilenumbruch
 
+**2024-11-28 - v1.2**
+- Hashtag-Suchfunktion (sucht in allen Hashtags, auch außerhalb des aktuellen Filters)
+- Visuelle Hervorhebung gesuchter/ausgewählter Nodes in Gelb
+- Automatische Zentrierung auf gesuchte Nodes
+- Hilfreiche Hinweise bei gefilterten Hashtags (z.B. "max.connections ≥ X")
+
 ## Lizenz
 
 GPL-3.0
