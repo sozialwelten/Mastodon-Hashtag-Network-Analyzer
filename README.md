@@ -61,6 +61,10 @@ Force-Simulation-Parameter in `createGraph()`:
 - Automatische Zentrierung auf gesuchte Nodes
 - Hilfreiche Hinweise bei gefilterten Hashtags (z.B. "max.connections ≥ X")
 
+**2024-12-02 - v1.3**
+- Breite des Graphen-Fensters auf 100% ausgeweitet für bessere Ansichtsmöglichkeit
+
+
 ## Lizenz
 
 GPL-3.0
